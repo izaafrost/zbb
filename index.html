@@ -308,6 +308,18 @@
         </div>
         <div id="history-list"></div>
       </div>
+
+      <div class="card">
+        <h2>Sikkerhedskopi</h2>
+        <p class="desc">Kopiér alle dine data (budget, posteringer, sparegris og historik) som tekst, du kan gemme i fx Noter. Skal du flytte data til en ny telefon eller gendanne dem, indsætter du teksten herunder og trykker Indlæs.</p>
+        <button class="btn ghost small" id="export-btn" style="width:100%;margin-bottom:12px;">Kopiér mine data</button>
+        <div class="field" style="margin-bottom:12px;">
+          <label>Indsæt sikkerhedskopi</label>
+          <textarea id="import-area" rows="3" placeholder='{"monthlyBudget":2000,...}' style="font-family:'Inter',sans-serif;font-size:12px;padding:12px 15px;border:1.5px solid transparent;border-radius:14px;background:rgba(62,59,46,0.05);color:var(--ink);width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+        </div>
+        <button class="btn small" id="import-btn" style="width:100%;">Indlæs data</button>
+        <p class="desc" id="backup-status" style="margin:10px 0 0;"></p>
+      </div>
   </div>
 </div>
 
@@ -714,6 +726,38 @@ document.getElementById('income-transfer-btn').addEventListener('click', ()=>{
   state.jarTotal = Math.round((state.jarTotal+total)*100)/100;
   state.income = [];
   save(); render();
+});
+
+document.getElementById('export-btn').addEventListener('click', async ()=>{
+  const data = JSON.stringify(state);
+  const status = document.getElementById('backup-status');
+  try{
+    await navigator.clipboard.writeText(data);
+    status.textContent = 'Dine data er kopieret. Indsæt dem et sikkert sted, fx i Noter.';
+  }catch(e){
+    document.getElementById('import-area').value = data;
+    status.textContent = 'Kunne ikke kopiere automatisk — dataene står nu i feltet herover, så du kan markere og kopiere dem selv.';
+  }
+});
+
+document.getElementById('import-btn').addEventListener('click', ()=>{
+  const status = document.getElementById('backup-status');
+  const raw = document.getElementById('import-area').value.trim();
+  if(!raw){ status.textContent = 'Indsæt først en sikkerhedskopi i feltet.'; return; }
+  try{
+    const parsed = JSON.parse(raw);
+    if(!parsed || !Array.isArray(parsed.categories)) throw new Error('ugyldig');
+    if(!confirm('Indlæs sikkerhedskopien? Det overskriver de data, der er i appen nu.')) return;
+    state = parsed;
+    if(!state.history) state.history = [];
+    if(!state.income) state.income = [];
+    if(!state.monthKey) state.monthKey = monthKeyOf(new Date());
+    document.getElementById('import-area').value = '';
+    save(); render();
+    status.textContent = 'Dine data er indlæst.';
+  }catch(e){
+    status.textContent = 'Det lignede ikke en gyldig sikkerhedskopi — tjek at hele teksten kom med.';
+  }
 });
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
