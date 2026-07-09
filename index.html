@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lommeregnskab</title>
+<title>Zero Based Budget</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3E3B2E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Lommeregnskab">
+<meta name="apple-mobile-web-app-title" content="Zero Based Budget">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
@@ -29,7 +29,8 @@
   *{box-sizing:border-box;}
   body{
     margin:0;
-    background:var(--paper);
+    background:linear-gradient(180deg, #F7F2E6 0%, var(--paper) 30%, #F2ECDC 100%);
+    background-attachment:fixed;
     color:var(--ink);
     font-family:'Inter',sans-serif;
     -webkit-font-smoothing:antialiased;
@@ -37,14 +38,14 @@
   }
   .wrap{max-width:920px;margin:0 auto;padding:40px 24px 80px;}
   .masthead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:30px;flex-wrap:wrap;gap:12px;}
-  .masthead h1{font-family:'Fraunces',serif;font-weight:500;font-size:38px;margin:0;letter-spacing:-0.3px;}
+  .masthead h1{font-family:'Fraunces',serif;font-weight:500;font-size:32px;margin:0;letter-spacing:-0.4px;}
   .masthead .sub{font-size:13px;color:var(--ink-soft);margin-top:4px;}
-  .month-badge{font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--ink);color:var(--paper);padding:8px 16px;border-radius:999px;}
+  .month-badge{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;background:rgba(62,59,46,0.08);color:var(--ink);padding:8px 16px;border-radius:999px;}
 
   .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:24px;}
   @media(max-width:760px){.grid{grid-template-columns:1fr;}}
 
-  .card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:26px;padding:26px 28px;margin-bottom:22px;box-shadow:0 1px 2px rgba(62,59,46,0.04), 0 10px 28px -14px rgba(62,59,46,0.12);transition:box-shadow 0.25s ease;}
+  .card{background:var(--card);border:1px solid rgba(226,218,195,0.6);border-left:4px solid var(--gold);border-radius:22px;padding:24px 26px;margin-bottom:18px;box-shadow:0 1px 1px rgba(62,59,46,0.03), 0 12px 32px -18px rgba(62,59,46,0.16);transition:box-shadow 0.25s ease, transform 0.2s ease;}
   .card h2{font-family:'Fraunces',serif;font-weight:500;font-size:19px;margin:0 0 6px;display:flex;align-items:center;gap:8px;}
   .card h2::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);flex:none;}
   .card.tint-moss h2::before{background:var(--moss);}
@@ -53,7 +54,7 @@
 
   .zbb-summary{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:14px;margin-bottom:14px;}
   .zbb-summary .label{font-size:12.5px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;font-weight:500;}
-  .zbb-summary .num{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;}
+  .zbb-summary .num{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:30px;font-weight:700;letter-spacing:-0.02em;}
   .zbb-summary .num.ok{color:var(--moss);}
   .zbb-summary .num.over{color:var(--coral);}
   .zbb-summary .num.under{color:var(--gold-deep);}
@@ -64,21 +65,22 @@
   .cat-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;flex:none;}
   .cat-list-head{display:flex;font-size:12px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;font-weight:500;padding:4px 0;border-bottom:1px solid var(--line);margin-bottom:4px;}
   .cat-list-head span{flex:1;text-align:right;}
-  .cat-row{padding:14px 12px;border-bottom:1px solid var(--line);border-radius:16px;transition:background 0.2s ease;}
+  .cat-row{padding:18px 14px;margin-bottom:6px;border-bottom:1px solid var(--line);border-radius:16px;transition:background 0.2s ease;}
   .cat-row:hover{background:#F0E9D9;}
-  .cat-row .cat-stats{display:flex;align-items:center;gap:10px;margin-top:6px;}
-  .cat-row .cat-stats .stat{flex:1;text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  .cat-row .cat-stats{display:flex;align-items:center;gap:12px;margin-top:0;}
+  .cat-row .cat-stats .stat{flex:1;text-align:right;font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;font-size:13.5px;}
   .cat-row .cat-stats .stat.alloc-cell{text-align:right;}
-  .cat-row .cat-stats .stat-label{display:block;font-family:'Inter',sans-serif;font-size:11px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;margin-bottom:3px;}
+  .cat-row .cat-stats .stat-label{display:block;font-family:'Inter',sans-serif;font-size:11px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;margin-bottom:5px;}
   .cat-name-row{display:flex;align-items:center;gap:8px;}
-  .bar-track{height:6px;background:#EDE6D3;border-radius:10px;overflow:hidden;margin:10px 2px 2px;width:calc(100% - 4px);}
+  .bar-track{height:6px;background:#EDE6D3;border-radius:10px;overflow:hidden;margin:14px 2px;width:calc(100% - 4px);}
   .bar-fill{height:100%;border-radius:10px;background:var(--gold);transition:width 0.4s ease;}
   .bar-fill.over{background:var(--coral);}
   input[type=text],input[type=number],select{
-    font-family:'Inter',sans-serif;font-size:13.5px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);width:100%;box-sizing:border-box;transition:border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family:'Inter',sans-serif;font-size:14px;padding:12px 15px;border:1.5px solid transparent;border-radius:14px;background:rgba(62,59,46,0.05);color:var(--ink);width:100%;box-sizing:border-box;transition:border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
-  input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(142,111,174,0.15);}
-  input[type=number]{font-family:'JetBrains Mono',monospace;}
+  input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;background:#fff;border-color:var(--gold);box-shadow:0 0 0 4px rgba(142,111,174,0.13);}
+  input::placeholder{color:#B3AB97;}
+  input[type=number]{font-variant-numeric:tabular-nums;}
   .row-inline{display:flex;gap:8px;align-items:center;}
   .row-inline input[type=number]{width:90px;flex:none;}
   .x-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:18px;padding:5px 10px;flex:none;line-height:1;border-radius:999px;transition:background 0.2s ease, color 0.2s ease;}
@@ -89,19 +91,22 @@
   .cat-name-input:hover{background:#F0E9D9;}
   .cat-name-input:focus{background:#fff;border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(142,111,174,0.12);}
   .cat-alloc-input{font-size:13px !important;padding:6px 8px !important;text-align:right;}
-  .add-cat input[type=text]{flex:1;}
+  .add-cat{display:flex;flex-direction:column;gap:12px;margin-top:22px;padding-top:20px;border-top:1px dashed var(--line);}
+  .add-cat-row{display:flex;gap:10px;align-items:center;}
+  .add-cat-row input[type=number]{flex:1;}
+  .add-cat-row .btn{flex:none;}
   .btn{
-    font-family:'Inter',sans-serif;font-size:13px;font-weight:500;padding:10px 18px;border-radius:999px;border:1px solid var(--ink);background:linear-gradient(135deg, var(--ink) 0%, #4A3F5C 100%);color:var(--paper);cursor:pointer;white-space:nowrap;transition:background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;padding:12px 20px;border-radius:999px;border:none;background:var(--gold-deep);color:#FDFBF6;cursor:pointer;white-space:nowrap;transition:background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   }
-  .btn:hover{background:linear-gradient(135deg, #16302C 0%, #3D3350 100%);box-shadow:0 4px 12px -4px rgba(107,79,140,0.4);}
+  .btn:hover{background:#5A4177;box-shadow:0 6px 16px -6px rgba(107,79,140,0.5);}
   .btn:active{transform:scale(0.98);}
-  .btn.ghost{background:transparent;color:var(--ink);}
-  .btn.ghost:hover{background:#EFE7D5;box-shadow:none;}
+  .btn.ghost{background:rgba(62,59,46,0.06);color:var(--ink);border:none;}
+  .btn.ghost:hover{background:rgba(62,59,46,0.10);box-shadow:none;}
   .btn.small{padding:7px 14px;font-size:12px;border-radius:999px;}
 
   /* sparegris jar */
   .jar-wrap{display:flex;flex-direction:column;align-items:center;padding-top:4px;}
-  .jar-amount{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;margin-top:10px;}
+  .jar-amount{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:38px;font-weight:700;letter-spacing:-0.02em;margin-top:12px;}
   .jar-label{font-size:12.5px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;margin-top:3px;}
   .jar-goal{font-size:12px;color:var(--gold-deep);margin-top:10px;text-align:center;font-weight:500;}
 
@@ -117,7 +122,7 @@
   .tx-row:last-child{border-bottom:none;}
   .tx-meta{display:flex;flex-direction:column;}
   .tx-cat{font-size:11px;color:var(--ink-soft);}
-  .tx-amt{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--coral);}
+  .tx-amt{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;color:var(--coral);}
   .empty-state{font-size:13px;color:var(--ink-soft);padding:18px 4px;text-align:center;}
   .savings-mini{font-size:11px;color:var(--gold-deep);}
   .settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
@@ -127,21 +132,20 @@
   .hist-row:last-child{border-bottom:none;}
   .hist-month{font-weight:500;}
   .hist-top{font-size:11.5px;color:var(--ink-soft);}
-  .hist-total{font-family:'JetBrains Mono',monospace;font-weight:500;}
-  .tab-nav{display:flex;gap:6px;margin-bottom:28px;border-bottom:1px solid var(--line);}
-  .tab-btn{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--ink-soft);background:none;border:none;padding:10px 4px;margin-right:18px;cursor:pointer;position:relative;transition:color 0.2s ease;}
-  .tab-btn.active{color:var(--ink);}
-  .tab-btn.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px;background:var(--gold);}
-  .tab-btn[data-tab="jar"].active::after{background:var(--gold-deep);}
-  .tab-btn[data-tab="trend"].active::after{background:var(--moss);}
-  .tab-btn[data-tab="budget"].active::after{background:var(--coral);}
+  .hist-total{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;}
+  .tab-nav{display:flex;gap:4px;margin-bottom:28px;background:rgba(62,59,46,0.06);padding:5px;border-radius:999px;}
+  .tab-btn{font-family:'Inter',sans-serif;font-size:13.5px;font-weight:500;color:var(--ink-soft);background:none;border:none;padding:9px 4px;flex:1;cursor:pointer;position:relative;border-radius:999px;transition:color 0.2s ease, background 0.25s ease, box-shadow 0.25s ease;}
+  .tab-btn.active{color:var(--ink);background:var(--card);box-shadow:0 2px 8px -2px rgba(62,59,46,0.18);}
+  .tab-btn[data-tab="jar"].active{color:var(--gold-deep);}
+  .tab-btn[data-tab="trend"].active{color:var(--moss);}
+  .tab-btn[data-tab="budget"].active{color:var(--coral);}
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
   .jar-mini{display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:#EFE6F2;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.2s ease, transform 0.15s ease;}
   .jar-mini:hover{background:#E5D8EA;}
   .jar-mini:active{transform:scale(0.97);}
   .jar-mini-label{font-size:11px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;}
-  .jar-mini-amount{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--gold-deep);}
+  .jar-mini-amount{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;color:var(--gold-deep);}
   ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
 </style>
 </head>
@@ -150,7 +154,7 @@
 
   <div class="masthead">
     <div>
-      <h1>Lommeregnskab</h1>
+      <h1>Zero Based Budget</h1>
       <div class="sub">Nul-baseret budget &amp; mikroopsparing</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -198,8 +202,10 @@
 
         <div class="add-cat">
           <input type="text" id="new-cat-name" placeholder="Ny kategori, fx Husleje">
-          <input type="number" id="new-cat-amount" placeholder="Kr." style="max-width:100px">
-          <button class="btn ghost small" id="add-cat-btn">Tilføj</button>
+          <div class="add-cat-row">
+            <input type="number" id="new-cat-amount" placeholder="Beløb i kr.">
+            <button class="btn ghost small" id="add-cat-btn">Tilføj</button>
+          </div>
         </div>
       </div>
 
@@ -285,7 +291,7 @@
 
         <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;">
           <div class="label">Ikke overført endnu</div>
-          <div class="num" id="income-total" style="font-size:26px;font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--moss);">0 kr.</div>
+          <div class="num" id="income-total" style="font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;color:var(--moss);">0 kr.</div>
           <button class="btn ghost small" id="income-transfer-btn" style="width:100%;margin-top:12px;">Overfør til sparegris</button>
         </div>
 
@@ -617,7 +623,7 @@ function renderHistory(){
       maintainAspectRatio: false,
       scales: {
         x: { stacked: true, grid:{display:false}, ticks:{font:{family:'Inter',size:11}} },
-        y: { stacked: true, grid:{color:'#E9E1CC'}, ticks:{font:{family:'JetBrains Mono',size:10}, callback: v => v + ' kr.'} }
+        y: { stacked: true, grid:{color:'#E9E1CC'}, ticks:{font:{family:'Inter',size:10}, callback: v => v + ' kr.'} }
       },
       plugins: {
         legend: { position:'bottom', labels:{ boxWidth:10, font:{family:'Inter', size:11} } },

@@ -1,7 +1,7 @@
 {
-  "name": "Lommeregnskab",
-  "short_name": "Lommeregnskab",
-  "description": "Personligt budget med nul-baseret budgettering og mikroopsparing",
+  "name": "Zero Based Budget",
+  "short_name": "ZBB",
+  "description": "Zero based budget med opsparing og indtægter",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
