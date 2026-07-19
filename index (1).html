@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Based Budget</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3E3B2E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Zero Based Budget">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F5F0E3;
+    --card:#FFFCF5;
+    --ink:#3E3B2E;
+    --ink-soft:#7C7563;
+    --gold:#8E6FAE;
+    --gold-deep:#6B4F8C;
+    --coral:#B5603F;
+    --line:#E2DAC3;
+    --green-fill:#DCE6D2;
+    --moss:#7C9468;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:linear-gradient(180deg, #F7F2E6 0%, var(--paper) 30%, #F2ECDC 100%);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.55;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:40px 24px 80px;}
+  .masthead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:30px;flex-wrap:wrap;gap:12px;}
+  .masthead h1{font-family:'Fraunces',serif;font-weight:500;font-size:32px;margin:0;letter-spacing:-0.4px;}
+  .masthead .sub{font-size:13px;color:var(--ink-soft);margin-top:4px;}
+  .month-badge{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;background:rgba(62,59,46,0.08);color:var(--ink);padding:8px 16px;border-radius:999px;}
+
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:24px;}
+  @media(max-width:760px){.grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--card);border:1px solid rgba(226,218,195,0.6);border-left:4px solid var(--gold);border-radius:22px;padding:24px 26px;margin-bottom:18px;box-shadow:0 1px 1px rgba(62,59,46,0.03), 0 12px 32px -18px rgba(62,59,46,0.16);transition:box-shadow 0.25s ease, transform 0.2s ease;}
+  .card h2{font-family:'Fraunces',serif;font-weight:500;font-size:19px;margin:0 0 6px;display:flex;align-items:center;gap:8px;}
+  .card h2::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);flex:none;}
+  .card.tint-moss h2::before{background:var(--moss);}
+  .card.tint-red h2::before{background:var(--coral);}
+  .card .desc{font-size:13px;color:var(--ink-soft);margin:0 0 16px;line-height:1.6;}
+
+  .zbb-summary{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:14px;margin-bottom:14px;}
+  .zbb-summary .label{font-size:12.5px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;font-weight:500;}
+  .zbb-summary .num{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:30px;font-weight:700;letter-spacing:-0.02em;}
+  .zbb-summary .num.ok{color:var(--moss);}
+  .zbb-summary .num.over{color:var(--coral);}
+  .zbb-summary .num.under{color:var(--gold-deep);}
+
+  .card.tint-purple{background:linear-gradient(160deg, #FBF8FE 0%, var(--card) 55%);border-color:#E6D9EE;border-left:4px solid var(--gold);}
+  .card.tint-moss{background:linear-gradient(160deg, #F7FAF3 0%, var(--card) 55%);border-color:#DCE6CE;border-left:4px solid var(--moss);}
+  .card.tint-red{background:linear-gradient(160deg, #FCF3EF 0%, var(--card) 55%);border-color:#EAD3CA;border-left:4px solid #C97A63;}
+  .cat-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;flex:none;}
+  .cat-list-head{display:flex;font-size:12px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;font-weight:500;padding:4px 0;border-bottom:1px solid var(--line);margin-bottom:4px;}
+  .cat-list-head span{flex:1;text-align:right;}
+  .cat-row{padding:18px 14px;margin-bottom:6px;border-bottom:1px solid var(--line);border-radius:16px;transition:background 0.2s ease;}
+  @media(hover:hover){ .cat-row:hover{background:#F0E9D9;} }
+  .cat-row .cat-stats{display:flex;align-items:center;gap:12px;margin-top:0;}
+  .cat-row .cat-stats .stat{flex:1;text-align:right;font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;font-size:13.5px;}
+  .cat-row .cat-stats .stat.alloc-cell{text-align:right;}
+  .cat-row .cat-stats .stat-label{display:block;font-family:'Inter',sans-serif;font-size:11px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;margin-bottom:5px;}
+  .cat-name-row{display:flex;align-items:center;gap:8px;}
+  .bar-track{height:6px;background:#EDE6D3;border-radius:10px;overflow:hidden;margin:14px 2px;width:calc(100% - 4px);}
+  .bar-fill{height:100%;border-radius:10px;background:var(--gold);transition:width 0.4s ease;}
+  .bar-fill.over{background:var(--coral);}
+  input[type=text],input[type=number],select{
+    font-family:'Inter',sans-serif;font-size:14px;padding:12px 15px;border:1.5px solid transparent;border-radius:14px;background:rgba(62,59,46,0.05);color:var(--ink);width:100%;box-sizing:border-box;transition:border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;background:#fff;border-color:var(--gold);box-shadow:0 0 0 4px rgba(142,111,174,0.13);}
+  input::placeholder{color:#B3AB97;}
+  input[type=number]{font-variant-numeric:tabular-nums;}
+  .row-inline{display:flex;gap:8px;align-items:center;}
+  .row-inline input[type=number]{width:90px;flex:none;}
+  .x-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:18px;padding:5px 10px;flex:none;line-height:1;border-radius:999px;transition:background 0.2s ease, color 0.2s ease;}
+  .x-btn:hover{color:var(--coral);background:#F3E7E0;}
+  .cat-name-input{
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:12px;padding:7px 10px;margin:-7px -10px;width:100%;max-width:100%;box-sizing:border-box;min-width:0;flex:1;transition:background 0.2s ease;
+  }
+  .cat-name-input:hover{background:#F0E9D9;}
+  .cat-name-input:focus{background:#fff;border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(142,111,174,0.12);}
+  .cat-alloc-input{font-size:13px !important;padding:6px 8px !important;text-align:right;}
+  .add-cat{display:flex;flex-direction:column;gap:12px;margin-top:22px;padding-top:20px;border-top:1px dashed var(--line);}
+  .add-cat-row{display:flex;gap:10px;align-items:center;}
+  .add-cat-row input[type=number]{flex:1;}
+  .add-cat-row .btn{flex:none;}
+  .btn{
+    font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;padding:12px 20px;border-radius:999px;border:none;background:var(--gold-deep);color:#FDFBF6;cursor:pointer;white-space:nowrap;transition:background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  }
+  .btn:hover{background:#5A4177;box-shadow:0 6px 16px -6px rgba(107,79,140,0.5);}
+  .btn:active{transform:scale(0.98);}
+  .btn.ghost{background:rgba(62,59,46,0.06);color:var(--ink);border:none;}
+  .btn.ghost:hover{background:rgba(62,59,46,0.10);box-shadow:none;}
+  .btn.small{padding:7px 14px;font-size:12px;border-radius:999px;}
+
+  /* sparegris jar */
+  .jar-wrap{display:flex;flex-direction:column;align-items:center;padding-top:4px;}
+  .jar-amount{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:38px;font-weight:700;letter-spacing:-0.02em;margin-top:12px;}
+  .jar-label{font-size:12.5px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;margin-top:3px;}
+  .jar-goal{font-size:12px;color:var(--gold-deep);margin-top:10px;text-align:center;font-weight:500;}
+
+  form.expense-form{display:flex;flex-direction:column;gap:10px;}
+  .quick-chip{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--ink);background:rgba(142,111,174,0.10);border:1px solid rgba(142,111,174,0.25);border-radius:999px;padding:7px 13px;cursor:pointer;transition:background 0.2s ease, transform 0.15s ease;}
+  .quick-chip:hover{background:rgba(142,111,174,0.18);}
+  .quick-chip:active{transform:scale(0.96);}
+  .quick-chip .chip-amt{color:var(--gold-deep);font-variant-numeric:tabular-nums;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:12.5px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;font-weight:500;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .roundup-note{font-size:12px;color:var(--gold-deep);background:#F0E9F4;border:1px solid #DCC9E8;border-radius:10px;padding:8px 12px;}
+
+  .tx-list{max-height:340px;overflow-y:auto;}
+  .tx-row{display:flex;justify-content:space-between;align-items:center;padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px;border-radius:14px;transition:background 0.2s ease;}
+  @media(hover:hover){ .tx-row:hover{background:#F3EEDF;} }
+  .tx-row:last-child{border-bottom:none;}
+  .tx-meta{display:flex;flex-direction:column;}
+  .tx-cat{font-size:11px;color:var(--ink-soft);}
+  .tx-amt{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;color:var(--coral);}
+  .empty-state{font-size:13px;color:var(--ink-soft);padding:18px 4px;text-align:center;}
+  .savings-mini{font-size:11px;color:var(--gold-deep);}
+  .settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
+  .settings-row label{font-size:12.5px;color:var(--ink-soft);}
+  .settings-row input{width:110px;flex:none;}
+  .hist-row{display:flex;justify-content:space-between;align-items:baseline;padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px;}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-month{font-weight:500;}
+  .hist-top{font-size:11.5px;color:var(--ink-soft);}
+  .hist-total{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;}
+  .tab-nav{display:flex;gap:4px;margin-bottom:28px;background:rgba(62,59,46,0.06);padding:5px;border-radius:999px;}
+  .tab-btn{font-family:'Inter',sans-serif;font-size:13.5px;font-weight:500;color:var(--ink-soft);background:none;border:none;padding:9px 4px;flex:1;cursor:pointer;position:relative;border-radius:999px;transition:color 0.2s ease, background 0.25s ease, box-shadow 0.25s ease;}
+  .tab-btn.active{color:var(--ink);background:var(--card);box-shadow:0 2px 8px -2px rgba(62,59,46,0.18);}
+  .tab-btn[data-tab="jar"].active{color:var(--gold-deep);}
+  .tab-btn[data-tab="trend"].active{color:var(--moss);}
+  .tab-btn[data-tab="budget"].active{color:var(--coral);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .jar-mini{display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:#EFE6F2;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.2s ease, transform 0.15s ease;}
+  .jar-mini:hover{background:#E5D8EA;}
+  .jar-mini:active{transform:scale(0.97);}
+  .jar-mini-label{font-size:11px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;}
+  .jar-mini-amount{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;color:var(--gold-deep);}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <h1>Zero Based Budget</h1>
+      <div class="sub">Nul-baseret budget &amp; mikroopsparing</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="jar-mini" id="jar-mini-badge" title="Gå til sparegrisen">
+        <span class="jar-mini-label">Sparegris</span>
+        <span class="jar-mini-amount" id="jar-mini-amount">0 kr.</span>
+      </button>
+      <div class="month-badge" id="month-badge">—</div>
+    </div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="budget">Budget</button>
+    <button class="tab-btn" data-tab="jar">Sparegris</button>
+    <button class="tab-btn" data-tab="trend">Udvikling over tid</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-budget">
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Budgetfordeling</h2>
+        <p class="desc">Hver krone skal have et job. Fordel hele beløbet, så der står 0 kr. tilbage.</p>
+
+        <div class="settings-row">
+          <label>Beløb til fordeling pr. måned</label>
+          <input type="number" id="monthly-budget" step="50" min="0">
+        </div>
+
+        <div class="zbb-summary">
+          <div>
+            <div class="label">Ufordelt</div>
+            <div class="num" id="unallocated">0 kr.</div>
+          </div>
+          <div style="text-align:right">
+            <div class="label">Brugt af fordelt</div>
+            <div class="num" id="spent-total" style="font-size:18px;color:var(--coral)">0 kr.</div>
+          </div>
+        </div>
+        <p class="desc" id="carryover-note" style="display:none;margin-top:-6px;color:var(--gold-deep);"></p>
+
+        <div class="cat-list-head">
+          <span style="flex:1;text-align:right">Fordelt</span><span style="flex:1;text-align:right">Brugt</span><span style="flex:1;text-align:right">Tilbage</span><span style="flex:none;width:30px"></span>
+        </div>
+        <div id="cat-tbody"></div>
+
+        <div class="add-cat">
+          <input type="text" id="new-cat-name" placeholder="Ny kategori, fx Husleje">
+          <div class="add-cat-row">
+            <input type="number" id="new-cat-amount" placeholder="Beløb i kr.">
+            <button class="btn ghost small" id="add-cat-btn">Tilføj</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card tint-red">
+        <h2>Registrer udgift</h2>
+        <p class="desc">Beløbet trækkes fra kategoriens fordelte budget med det eksakte beløb.</p>
+        <form class="expense-form" id="expense-form">
+          <div id="quick-picks" style="display:none;">
+            <div class="label" style="font-size:12px;color:var(--ink-soft);font-weight:500;margin-bottom:6px;">Hurtig-valg fra tidligere</div>
+            <div id="quick-picks-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;"></div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label>Kategori</label>
+              <select id="exp-category"></select>
+            </div>
+            <div class="field">
+              <label>Beløb (kr.)</label>
+              <input type="number" id="exp-amount" step="0.5" min="0" placeholder="0">
+            </div>
+          </div>
+          <div class="field">
+            <label>Note</label>
+            <input type="text" id="exp-note" placeholder="Fx Føtex, frokost...">
+          </div>
+          <button type="submit" class="btn">Tilføj udgift</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Seneste posteringer</h2>
+        <p class="desc">Klik på en postering for at rette beløb, kategori eller note.</p>
+        <div class="tx-list" id="tx-list"></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab-panel" id="tab-jar">
+      <div class="card jar-card tint-purple">
+        <h2>Sparegrisen</h2>
+        <p class="desc">Din opsparing, samlet ét sted.</p>
+        <div class="jar-wrap">
+          <svg width="120" height="140" viewBox="0 0 120 140" role="img" aria-label="Sparegris fyldningsniveau" style="filter:drop-shadow(0 6px 10px rgba(62,59,46,0.12));">
+            <defs>
+              <clipPath id="jarClip"><path d="M20 30 Q20 12 60 12 Q100 12 100 30 L100 118 Q100 132 84 132 L36 132 Q20 132 20 118 Z"/></clipPath>
+            </defs>
+            <path d="M20 30 Q20 12 60 12 Q100 12 100 30 L100 118 Q100 132 84 132 L36 132 Q20 132 20 118 Z" fill="none" stroke="#3E3B2E" stroke-width="3" stroke-linejoin="round"/>
+            <rect id="jar-fill-invested" x="20" width="80" height="0" y="132" fill="#7C9468" clip-path="url(#jarClip)"/>
+            <rect id="jar-fill" x="20" width="80" height="0" y="132" fill="#8E6FAE" clip-path="url(#jarClip)"/>
+            <line x1="20" y1="48" x2="100" y2="48" stroke="#3E3B2E" stroke-width="1" stroke-dasharray="3 4" opacity="0.35"/>
+            <line x1="20" y1="80" x2="100" y2="80" stroke="#3E3B2E" stroke-width="1" stroke-dasharray="3 4" opacity="0.35"/>
+            <line x1="20" y1="106" x2="100" y2="106" stroke="#3E3B2E" stroke-width="1" stroke-dasharray="3 4" opacity="0.35"/>
+            <rect x="50" y="2" width="20" height="12" rx="2" fill="#3E3B2E"/>
+          </svg>
+          <div class="jar-amount" id="jar-amount">0 kr.</div>
+          <div class="jar-label">opsparet i alt</div>
+          <div id="jar-breakdown" style="display:none;font-size:12px;color:var(--ink-soft);margin-top:6px;">
+            <span style="color:var(--gold-deep);font-weight:600;">●</span> <span id="jar-free-txt"></span>
+            &nbsp;&nbsp;<span style="color:var(--moss);font-weight:600;">●</span> <span id="jar-invested-txt"></span>
+          </div>
+          <div class="jar-goal" id="jar-goal-text"></div>
+        </div>
+        <div class="settings-row" style="margin-top:16px">
+          <label>Allerede opsparet (sæt beløb)</label>
+          <input type="number" id="jar-set-amount" step="10" min="0" placeholder="fx 1200">
+        </div>
+        <p class="desc" style="margin-top:-8px;margin-bottom:14px;">Brug feltet ovenfor til at angive, hvad du allerede har sparet op et andet sted – det overskriver totalen. Knappen herunder lægger i stedet et ekstra beløb til den nuværende sum.</p>
+        <div class="settings-row">
+          <label>Sparemål (valgfrit)</label>
+          <input type="number" id="savings-goal" step="50" min="0" placeholder="fx 500">
+        </div>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Læg ekstra i sparegrisen (kr.)</label>
+          <input type="number" id="manual-deposit-amount" step="1" min="0" placeholder="0">
+        </div>
+        <button class="btn ghost small" id="manual-deposit-btn" style="width:100%">+ Læg i sparegrisen</button>
+        <p class="desc" id="jar-status" style="display:none;margin:10px 0 0;color:var(--coral);"></p>
+
+        <div style="margin-top:20px;padding-top:18px;border-top:1px dashed var(--line);">
+          <div class="label" style="font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-bottom:8px;">Flyt fra budget til sparegris</div>
+          <p class="desc" style="margin-bottom:10px;">Registreres som en udgift i kategorien og lægges samtidig i sparegrisen — så tallene hænger sammen.</p>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Kategori i budgettet</label>
+            <select id="jar-from-budget-cat"></select>
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Til</label>
+            <select id="jar-from-budget-dest">
+              <option value="fri">Opsparing (fri)</option>
+              <option value="invest">Investering</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Beløb (kr.)</label>
+            <input type="number" id="jar-from-budget-amount" step="1" min="0" placeholder="0">
+          </div>
+          <button class="btn ghost small" id="jar-from-budget-btn" style="width:100%;">Flyt til sparegris</button>
+        </div>
+
+        <div style="margin-top:20px;padding-top:18px;border-top:1px dashed var(--line);">
+          <div class="label" style="font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-bottom:8px;">Investering</div>
+          <p class="desc" style="margin-bottom:10px;">Marker en del af opsparingen som investeret — den vises grønt i bunden af glasset og tæller stadig med i din samlede opsparing.</p>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Beløb (kr.)</label>
+            <input type="number" id="invest-amount" step="1" min="0" placeholder="0">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn ghost small" id="invest-btn" style="width:100%;color:var(--moss);">→ Til investering</button>
+            <button class="btn ghost small" id="divest-btn" style="width:100%;">← Tilbage til fri opsparing</button>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:18px;border-top:1px dashed var(--line);">
+          <div class="field" style="margin-bottom:10px;">
+            <label>Tag ud af sparegrisen (kr.)</label>
+            <input type="number" id="jar-withdraw-amount" step="1" min="0" placeholder="0">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Til hvad?</label>
+            <input type="text" id="jar-withdraw-note" placeholder="Fx ny cykellygte">
+          </div>
+          <button class="btn ghost small" id="jar-withdraw-btn" style="width:100%;color:var(--coral);">− Tag ud af sparegrisen</button>
+        </div>
+
+        <div style="margin-top:20px;">
+          <div class="label" style="font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-bottom:4px;">Bevægelser</div>
+          <div class="tx-list" id="jar-log-list"></div>
+        </div>
+      </div>
+
+      <div class="card tint-moss">
+        <h2>Indtægter</h2>
+        <p class="desc">Salg af tøj eller ting, du ikke længere skal bruge. Beløbet samles her, og du kan overføre det til sparegrisen, når det passer dig. Klik på en indtægt i listen for at rette eller slette den.</p>
+        <form id="income-form" class="expense-form">
+          <div class="field">
+            <label>Beløb (kr.)</label>
+            <input type="number" id="income-amount" step="1" min="0" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Note</label>
+            <input type="text" id="income-note" placeholder="Fx solgt jakke på DBA">
+          </div>
+          <button type="submit" class="btn">Tilføj indtægt</button>
+        </form>
+
+        <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;">
+          <div class="label">Ikke overført endnu</div>
+          <div class="num" id="income-total" style="font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;color:var(--moss);">0 kr.</div>
+          <button class="btn ghost small" id="income-transfer-btn" style="width:100%;margin-top:12px;">Overfør til sparegris</button>
+        </div>
+
+        <div class="tx-list" id="income-list" style="margin-top:6px;"></div>
+      </div>
+  </div>
+
+  <div class="tab-panel" id="tab-trend">
+      <div class="card">
+        <h2>Udvikling over tid</h2>
+        <p class="desc">Hvad dine penge går til, måned for måned. Måneden skifter automatisk, når kalendermåneden gør.</p>
+        <div style="position:relative;height:260px;margin-bottom:14px;">
+          <canvas id="trend-chart"></canvas>
+        </div>
+        <div id="history-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Sikkerhedskopi</h2>
+        <p class="desc">Kopiér alle dine data (budget, posteringer, sparegris og historik) som tekst, du kan gemme i fx Noter. Skal du flytte data til en ny telefon eller gendanne dem, indsætter du teksten herunder og trykker Indlæs.</p>
+        <button class="btn ghost small" id="export-btn" style="width:100%;margin-bottom:12px;">Kopiér mine data</button>
+        <div class="field" style="margin-bottom:12px;">
+          <label>Indsæt sikkerhedskopi</label>
+          <textarea id="import-area" rows="3" placeholder='{"monthlyBudget":2000,...}' style="font-family:'Inter',sans-serif;font-size:12px;padding:12px 15px;border:1.5px solid transparent;border-radius:14px;background:rgba(62,59,46,0.05);color:var(--ink);width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+        </div>
+        <button class="btn small" id="import-btn" style="width:100%;">Indlæs data</button>
+        <p class="desc" id="backup-status" style="margin:10px 0 0;"></p>
+      </div>
+  </div>
+</div>
+
+<script>
+const MONTHS = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+const fmt = n => (Math.round(n*100)/100).toLocaleString('da-DK',{minimumFractionDigits:0,maximumFractionDigits:2}) + " kr.";
+const KEY = 'lommeregnskab-state';
+
+let confirmDeleteCatId = null;
+let confirmImport = false;
+
+let state = {
+  monthlyBudget: 2000,
+  monthLabel: '',
+  monthKey: '',
+  categories: [],
+  transactions: [],
+  jarTotal: 0,
+  savingsGoal: null,
+  history: [],
+  income: [],
+  jarLog: [],
+  savedEntries: [],
+  invested: 0
+};
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function monthKeyOf(d){ return d.getFullYear() + '-' + d.getMonth(); }
+
+function defaultState(){
+  const d = new Date();
+  return {
+    monthlyBudget: 2000,
+    monthLabel: MONTHS[d.getMonth()] + " " + d.getFullYear(),
+    monthKey: monthKeyOf(d),
+    categories: [
+      {id: uid(), name: "Mad", allocated: 900},
+      {id: uid(), name: "Transport", allocated: 300},
+      {id: uid(), name: "Fritid", allocated: 300},
+      {id: uid(), name: "Buffer", allocated: 500}
+    ],
+    transactions: [],
+    jarTotal: 0,
+    savingsGoal: null,
+    history: [],
+    income: [],
+    jarLog: [],
+    savedEntries: [],
+    invested: 0
+  };
+}
+
+async function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    state = raw ? JSON.parse(raw) : defaultState();
+  }catch(e){
+    state = defaultState();
+  }
+  if(!state.history) state.history = [];
+  if(!state.income) state.income = [];
+  if(!state.jarLog) state.jarLog = [];
+  if(!state.savedEntries) state.savedEntries = [];
+  if(state.carryover === undefined) state.carryover = 0;
+  if(state.invested === undefined) state.invested = 0;
+  if(!state.monthKey) state.monthKey = monthKeyOf(new Date());
+  checkAutoRollover();
+  render();
+}
+
+function archiveCurrentMonth(){
+  const spendByCat = state.categories.map(c=>({name:c.name, spent: spentByCategory(c.id)}));
+  const totalSpent = state.transactions.reduce((s,t)=>s+t.amount,0);
+  state.history.push({
+    monthLabel: state.monthLabel,
+    monthlyBudget: state.monthlyBudget,
+    categories: spendByCat,
+    totalSpent,
+    txCount: state.transactions.length
+  });
+}
+
+function rolloverCategories(){
+  // Overfør det, der er tilbage i hver kategori, til næste måned,
+  // og husk det samlede overførte beløb separat, så det nye månedsbudget ikke "spises".
+  let totalCarry = 0;
+  state.categories.forEach(c=>{
+    const spent = spentByCategory(c.id);
+    const leftover = Math.round((c.allocated - spent)*100)/100;
+    c.allocated = leftover;
+    c.carried = leftover;
+    totalCarry += leftover;
+  });
+  state.carryover = Math.round(totalCarry*100)/100;
+}
+
+function checkAutoRollover(){
+  const now = new Date();
+  const currentKey = monthKeyOf(now);
+  if(state.monthKey !== currentKey){
+    if(state.transactions.length > 0 || state.categories.some(c=>spentByCategory(c.id)>0)){
+      archiveCurrentMonth();
+    }
+    rolloverCategories();
+    state.transactions = [];
+    state.monthLabel = MONTHS[now.getMonth()] + " " + now.getFullYear();
+    state.monthKey = currentKey;
+    save();
+  }
+}
+
+async function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(state));
+  }catch(e){
+    console.error('Kunne ikke gemme', e);
+  }
+}
+
+function spentByCategory(catId){
+  return state.transactions.filter(t=>t.categoryId===catId).reduce((s,t)=>s+t.amount,0);
+}
+
+function render(){
+  document.getElementById('month-badge').textContent = state.monthLabel;
+  document.getElementById('monthly-budget').value = state.monthlyBudget;
+  document.getElementById('savings-goal').value = state.savingsGoal || '';
+  document.getElementById('jar-set-amount').value = state.jarTotal || '';
+
+  const allocatedTotal = state.categories.reduce((s,c)=>s+c.allocated,0);
+  const carry = state.carryover || 0;
+  const unallocated = Math.round((state.monthlyBudget + carry - allocatedTotal)*100)/100;
+  const unallocEl = document.getElementById('unallocated');
+  unallocEl.textContent = fmt(unallocated);
+  unallocEl.className = 'num ' + (unallocated===0 ? 'ok' : unallocated>0 ? 'under' : 'over');
+  const carryEl = document.getElementById('carryover-note');
+  if(carry !== 0){
+    carryEl.style.display = 'block';
+    carryEl.textContent = `Til rådighed i alt: ${fmt(state.monthlyBudget + carry)} — heraf ${fmt(carry)} overført fra sidste måned.`;
+  } else {
+    carryEl.style.display = 'none';
+  }
+
+  const spentTotal = state.transactions.reduce((s,t)=>s+t.amount,0);
+  document.getElementById('spent-total').textContent = fmt(spentTotal);
+
+  const tbody = document.getElementById('cat-tbody');
+  tbody.innerHTML = '';
+  state.categories.forEach((c, i)=>{
+    const spent = spentByCategory(c.id);
+    const remaining = c.allocated - spent;
+    const pct = c.allocated>0 ? Math.min(100, (spent/c.allocated)*100) : 0;
+    const over = spent > c.allocated;
+    const dotColor = 'var(--gold)';
+    const row = document.createElement('div');
+    row.className='cat-row';
+    row.innerHTML = `
+      <div class="cat-name-row">
+        <span class="cat-dot" style="background:${dotColor}"></span>
+        <input type="text" data-id-name="${c.id}" class="cat-name-input" value="${c.name}">
+        <button class="x-btn" data-del="${c.id}" aria-label="Fjern kategori" style="${confirmDeleteCatId===c.id ? 'background:var(--coral);color:#fff;font-size:12px;font-weight:600;padding:6px 12px;' : ''}">${confirmDeleteCatId===c.id ? 'Slet?' : '×'}</button>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${over?'#B5603F':dotColor}"></div></div>
+      <div class="cat-stats">
+        <div class="stat alloc-cell"><span class="stat-label">Fordelt</span><input type="number" data-id="${c.id}" class="cat-alloc-input" value="${c.allocated}"></div>
+        <div class="stat"><span class="stat-label">Brugt</span>${fmt(spent)}</div>
+        <div class="stat" style="color:${over?'#B5603F':'inherit'}"><span class="stat-label">Tilbage</span>${fmt(remaining)}</div>
+      </div>
+      ${c.carried ? `<div style="font-size:11px;color:var(--gold-deep);margin-top:8px;">heraf ${fmt(c.carried)} overført fra sidste måned</div>` : ''}
+    `;
+    tbody.appendChild(row);
+  });
+
+  tbody.querySelectorAll('.cat-name-input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const cat = state.categories.find(c=>c.id===e.target.dataset.idName);
+      const val = e.target.value.trim();
+      cat.name = val || cat.name;
+      save(); render();
+    });
+  });
+  tbody.querySelectorAll('.cat-alloc-input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const cat = state.categories.find(c=>c.id===e.target.dataset.id);
+      cat.allocated = parseFloat(e.target.value)||0;
+      save(); render();
+    });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const id = btn.dataset.del;
+      if(confirmDeleteCatId === id){
+        confirmDeleteCatId = null;
+        state.categories = state.categories.filter(c=>c.id!==id);
+        save(); render();
+      } else {
+        confirmDeleteCatId = id;
+        render();
+        setTimeout(()=>{ if(confirmDeleteCatId===id){ confirmDeleteCatId=null; render(); } }, 4000);
+      }
+    });
+  });
+
+  const sel = document.getElementById('exp-category');
+  const prevVal = sel.value;
+  sel.innerHTML = state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(state.categories.some(c=>c.id===prevVal)) sel.value = prevVal;
+
+  const jarSel = document.getElementById('jar-from-budget-cat');
+  const jarPrev = jarSel.value;
+  jarSel.innerHTML = state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(state.categories.some(c=>c.id===jarPrev)) jarSel.value = jarPrev;
+
+  const invested = state.invested || 0;
+  const combined = Math.round((state.jarTotal + invested)*100)/100;
+  document.getElementById('jar-amount').textContent = fmt(combined);
+  document.getElementById('jar-mini-amount').textContent = fmt(combined);
+
+  const breakdown = document.getElementById('jar-breakdown');
+  if(invested > 0){
+    breakdown.style.display='block';
+    document.getElementById('jar-free-txt').textContent = fmt(state.jarTotal) + ' fri';
+    document.getElementById('jar-invested-txt').textContent = fmt(invested) + ' investeret';
+  } else {
+    breakdown.style.display='none';
+  }
+
+  const maxH = 100;
+  const scaleBase = (state.savingsGoal && state.savingsGoal>0) ? state.savingsGoal : 2000;
+  const totalH = Math.min(1, combined/scaleBase) * maxH;
+  const investedH = combined>0 ? totalH * (invested/combined) : 0;
+  const freeH = totalH - investedH;
+  if(state.savingsGoal && state.savingsGoal>0){
+    document.getElementById('jar-goal-text').textContent = `${fmt(combined)} af mål ${fmt(state.savingsGoal)}`;
+  } else {
+    document.getElementById('jar-goal-text').textContent = '';
+  }
+  const invRect = document.getElementById('jar-fill-invested');
+  invRect.setAttribute('height', investedH);
+  invRect.setAttribute('y', 132-investedH);
+  const freeRect = document.getElementById('jar-fill');
+  freeRect.setAttribute('height', freeH);
+  freeRect.setAttribute('y', 132-investedH-freeH);
+
+  const txList = document.getElementById('tx-list');
+  if(state.transactions.length===0){
+    txList.innerHTML = '<div class="empty-state">Ingen posteringer endnu. Tilføj din første udgift til venstre.</div>';
+  } else {
+    txList.innerHTML = [...state.transactions].reverse().slice(0,30).map(t=>{
+      const cat = state.categories.find(c=>c.id===t.categoryId);
+      if(state.editingTxId === t.id){
+        const catOptions = state.categories.map(c=>`<option value="${c.id}" ${c.id===t.categoryId?'selected':''}>${c.name}</option>`).join('');
+        return `<div class="tx-row tx-row-editing" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <div class="two-col">
+            <div class="field">
+              <label>Beløb (kr.)</label>
+              <input type="number" class="tx-edit-amount" data-edit-id="${t.id}" value="${t.amount}" step="0.5" min="0">
+            </div>
+            <div class="field">
+              <label>Kategori</label>
+              <select class="tx-edit-category" data-edit-id="${t.id}">${catOptions}</select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Note</label>
+            <input type="text" class="tx-edit-note" data-edit-id="${t.id}" value="${t.note || ''}">
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn small" data-save-tx="${t.id}" style="flex:1;">Gem</button>
+            <button class="btn ghost small" data-cancel-tx="${t.id}">Annullér</button>
+            <button class="x-btn" data-delete-tx="${t.id}" aria-label="Slet postering" style="color:var(--coral);">×</button>
+          </div>
+        </div>`;
+      }
+      return `<div class="tx-row" data-edit-trigger="${t.id}" style="cursor:pointer;">
+        <div class="tx-meta">
+          <span>${t.note || (cat?cat.name:'Udgift')}</span>
+          <span class="tx-cat">${cat?cat.name:'Ukendt kategori'}</span>
+        </div>
+        <span class="tx-amt">−${fmt(t.amount)}</span>
+      </div>`;
+    }).join('');
+
+    txList.querySelectorAll('[data-edit-trigger]').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        state.editingTxId = row.dataset.editTrigger;
+        render();
+      });
+    });
+    txList.querySelectorAll('[data-save-tx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.saveTx;
+        const t = state.transactions.find(x=>x.id===id);
+        const amtInp = txList.querySelector(`.tx-edit-amount[data-edit-id="${id}"]`);
+        const catInp = txList.querySelector(`.tx-edit-category[data-edit-id="${id}"]`);
+        const noteInp = txList.querySelector(`.tx-edit-note[data-edit-id="${id}"]`);
+        const amt = parseFloat(amtInp.value);
+        if(amt && amt>0){
+          if(t.jarDest){
+            const diff = Math.round((amt - t.amount)*100)/100;
+            if(t.jarDest==='invest'){
+              state.invested = Math.max(0, Math.round(((state.invested||0)+diff)*100)/100);
+            } else {
+              state.jarTotal = Math.max(0, Math.round((state.jarTotal+diff)*100)/100);
+            }
+            const logEntry = state.jarLog.find(l=>l.id===t.jarLogId);
+            if(logEntry) logEntry.amount = amt;
+          }
+          t.amount = amt;
+          t.categoryId = catInp.value;
+          t.note = noteInp.value.trim();
+        }
+        state.editingTxId = null;
+        save(); render();
+      });
+    });
+    txList.querySelectorAll('[data-cancel-tx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.editingTxId = null;
+        render();
+      });
+    });
+    txList.querySelectorAll('[data-delete-tx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.deleteTx;
+        const t = state.transactions.find(x=>x.id===id);
+        if(t && t.jarDest){
+          if(t.jarDest==='invest'){
+            state.invested = Math.max(0, Math.round(((state.invested||0)-t.amount)*100)/100);
+          } else {
+            state.jarTotal = Math.max(0, Math.round((state.jarTotal-t.amount)*100)/100);
+          }
+          state.jarLog = state.jarLog.filter(l=>l.id!==t.jarLogId);
+        }
+        state.transactions = state.transactions.filter(x=>x.id!==id);
+        state.editingTxId = null;
+        save(); render();
+      });
+    });
+  }
+
+  renderIncome();
+  renderJarLog();
+  renderQuickPicks();
+  renderHistory();
+}
+
+function renderQuickPicks(){
+  const wrap = document.getElementById('quick-picks');
+  const chips = document.getElementById('quick-picks-chips');
+  if(!state.savedEntries || state.savedEntries.length===0){
+    wrap.style.display='none';
+    return;
+  }
+  const top = [...state.savedEntries]
+    .sort((a,b)=>(b.count-a.count) || (new Date(b.lastUsed)-new Date(a.lastUsed)))
+    .slice(0,6);
+  wrap.style.display='block';
+  chips.innerHTML = top.map((s,idx)=>
+    `<button type="button" class="quick-chip" data-pick="${idx}">${s.note} <span class="chip-amt">${fmt(s.amount)}</span></button>`
+  ).join('');
+  chips.querySelectorAll('[data-pick]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s = top[parseInt(btn.dataset.pick)];
+      document.getElementById('exp-amount').value = s.amount;
+      document.getElementById('exp-note').value = s.note;
+      const sel = document.getElementById('exp-category');
+      if(state.categories.some(c=>c.id===s.categoryId)) sel.value = s.categoryId;
+    });
+  });
+}
+
+function renderJarLog(){
+  const list = document.getElementById('jar-log-list');
+  if(!state.jarLog || state.jarLog.length===0){
+    list.innerHTML = '<div class="empty-state">Ingen bevægelser endnu. Indskud, overførsler og udtag vises her.</div>';
+    return;
+  }
+  list.innerHTML = [...state.jarLog].reverse().slice(0,25).map(e=>{
+    const isOut = e.type==='ud';
+    const isMove = e.type==='flyt';
+    const d = new Date(e.date);
+    const dateStr = d.toLocaleDateString('da-DK', {day:'numeric', month:'short'});
+    const color = isMove ? 'var(--gold-deep)' : (isOut ? 'var(--coral)' : 'var(--moss)');
+    const sign = isMove ? '⇄ ' : (isOut ? '−' : '+');
+    return `<div class="tx-row">
+      <div class="tx-meta">
+        <span>${e.note || (isOut ? 'Udtag' : 'Indskud')}</span>
+        <span class="tx-cat">${dateStr}</span>
+      </div>
+      <span class="tx-amt" style="color:${color}">${sign}${fmt(e.amount)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderIncome(){
+  const total = state.income.reduce((s,i)=>s+i.amount,0);
+  document.getElementById('income-total').textContent = fmt(total);
+  const list = document.getElementById('income-list');
+  if(state.income.length===0){
+    list.innerHTML = '<div class="empty-state">Ingen indtægter endnu. Solgt noget tøj eller ting? Tilføj det herover.</div>';
+  } else {
+    list.innerHTML = [...state.income].reverse().map(i=>{
+      if(state.editingIncomeId === i.id){
+        return `<div class="tx-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <div class="field">
+            <label>Beløb (kr.)</label>
+            <input type="number" class="inc-edit-amount" data-edit-id="${i.id}" value="${i.amount}" step="1" min="0">
+          </div>
+          <div class="field">
+            <label>Note</label>
+            <input type="text" class="inc-edit-note" data-edit-id="${i.id}" value="${i.note || ''}">
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn small" data-save-inc="${i.id}" style="flex:1;">Gem</button>
+            <button class="btn ghost small" data-cancel-inc="${i.id}">Annullér</button>
+            <button class="x-btn" data-delete-inc="${i.id}" aria-label="Slet indtægt" style="color:var(--coral);">×</button>
+          </div>
+        </div>`;
+      }
+      return `<div class="tx-row" data-inc-edit-trigger="${i.id}" style="cursor:pointer;">
+        <div class="tx-meta">
+          <span>${i.note || 'Indtægt'}</span>
+        </div>
+        <span class="tx-amt" style="color:var(--moss)">+${fmt(i.amount)}</span>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-inc-edit-trigger]').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        state.editingIncomeId = row.dataset.incEditTrigger;
+        render();
+      });
+    });
+    list.querySelectorAll('[data-save-inc]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.saveInc;
+        const item = state.income.find(x=>x.id===id);
+        const amt = parseFloat(list.querySelector(`.inc-edit-amount[data-edit-id="${id}"]`).value);
+        const note = list.querySelector(`.inc-edit-note[data-edit-id="${id}"]`).value.trim();
+        if(amt && amt>0){
+          item.amount = amt;
+          item.note = note;
+        }
+        state.editingIncomeId = null;
+        save(); render();
+      });
+    });
+    list.querySelectorAll('[data-cancel-inc]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.editingIncomeId = null;
+        render();
+      });
+    });
+    list.querySelectorAll('[data-delete-inc]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.deleteInc;
+        state.income = state.income.filter(x=>x.id!==id);
+        state.editingIncomeId = null;
+        save(); render();
+      });
+    });
+  }
+}
+
+const PALETTE = ['#3E3B2E','#8E6FAE','#B5603F','#7C9468','#6B4F8C','#A98B57','#5C7A6B','#AE93C2'];
+let trendChartInstance = null;
+
+function renderHistory(){
+  const currentSpendByCat = state.categories.map(c=>({name:c.name, spent: spentByCategory(c.id)}));
+  const currentTotal = state.transactions.reduce((s,t)=>s+t.amount,0);
+  const months = [...state.history, {monthLabel: state.monthLabel + ' (nu)', categories: currentSpendByCat, totalSpent: currentTotal}];
+
+  const allCatNames = [...new Set(months.flatMap(m=>m.categories.map(c=>c.name)))];
+
+  const datasets = allCatNames.map((name, i)=>({
+    label: name,
+    data: months.map(m=>{
+      const found = m.categories.find(c=>c.name===name);
+      return found ? Math.round(found.spent*100)/100 : 0;
+    }),
+    backgroundColor: PALETTE[i % PALETTE.length],
+    borderRadius: 3
+  }));
+
+  const ctx = document.getElementById('trend-chart');
+  if(trendChartInstance) trendChartInstance.destroy();
+  trendChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: months.map(m=>m.monthLabel),
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, grid:{display:false}, ticks:{font:{family:'Inter',size:11}} },
+        y: { stacked: true, grid:{color:'#E9E1CC'}, ticks:{font:{family:'Inter',size:10}, callback: v => v + ' kr.'} }
+      },
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:10, font:{family:'Inter', size:11} } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.raw) } }
+      }
+    }
+  });
+
+  const histList = document.getElementById('history-list');
+  if(state.history.length===0){
+    histList.innerHTML = '<div class="empty-state">Ingen tidligere måneder gemt endnu. De dukker op her, når du starter en ny måned.</div>';
+  } else {
+    histList.innerHTML = [...state.history].reverse().map(m=>{
+      const top = [...m.categories].sort((a,b)=>b.spent-a.spent)[0];
+      return `<div class="hist-row">
+        <div>
+          <div class="hist-month">${m.monthLabel}</div>
+          <div class="hist-top">${top && top.spent>0 ? 'Mest brugt på: '+top.name : 'Ingen registrerede udgifter'}</div>
+        </div>
+        <div class="hist-total">${fmt(m.totalSpent)}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+document.getElementById('monthly-budget').addEventListener('change', e=>{
+  state.monthlyBudget = parseFloat(e.target.value)||0;
+  save(); render();
+});
+document.getElementById('jar-set-amount').addEventListener('change', e=>{
+  const val = parseFloat(e.target.value);
+  state.jarTotal = (isNaN(val) || val<0) ? 0 : Math.round(val*100)/100;
+  save(); render();
+});
+document.getElementById('savings-goal').addEventListener('change', e=>{
+  state.savingsGoal = parseFloat(e.target.value)||null;
+  save(); render();
+});
+
+document.getElementById('add-cat-btn').addEventListener('click', ()=>{
+  const nameInp = document.getElementById('new-cat-name');
+  const amtInp = document.getElementById('new-cat-amount');
+  const name = nameInp.value.trim();
+  if(!name) return;
+  state.categories.push({id: uid(), name, allocated: parseFloat(amtInp.value)||0});
+  nameInp.value=''; amtInp.value='';
+  save(); render();
+});
+
+const expAmountInp = document.getElementById('exp-amount');
+
+document.getElementById('expense-form').addEventListener('submit', e=>{
+  e.preventDefault();
+  const catId = document.getElementById('exp-category').value;
+  const amt = parseFloat(expAmountInp.value);
+  const note = document.getElementById('exp-note').value.trim();
+  if(!catId || !amt || amt<=0) return;
+  state.transactions.push({id: uid(), categoryId: catId, amount: amt, note, date: new Date().toISOString()});
+  rememberEntry(note, amt, catId);
+  expAmountInp.value=''; document.getElementById('exp-note').value='';
+  save(); render();
+});
+
+function rememberEntry(note, amount, categoryId){
+  if(!note) return;
+  const key = note.toLowerCase();
+  const existing = state.savedEntries.find(s=>s.note.toLowerCase()===key);
+  if(existing){
+    existing.amount = amount;
+    existing.categoryId = categoryId;
+    existing.count = (existing.count||1)+1;
+    existing.lastUsed = new Date().toISOString();
+  } else {
+    state.savedEntries.push({note, amount, categoryId, count:1, lastUsed:new Date().toISOString()});
+  }
+  if(state.savedEntries.length>30){
+    state.savedEntries.sort((a,b)=>(b.count-a.count) || (new Date(b.lastUsed)-new Date(a.lastUsed)));
+    state.savedEntries = state.savedEntries.slice(0,30);
+  }
+}
+
+function showJarMsg(txt){
+  const el = document.getElementById('jar-status');
+  el.textContent = txt;
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 4000);
+}
+
+document.getElementById('manual-deposit-btn').addEventListener('click', ()=>{
+  const inp = document.getElementById('manual-deposit-amount');
+  const amt = parseFloat(inp.value);
+  if(!amt || amt<=0) return;
+  state.jarTotal = Math.round((state.jarTotal+amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'ind', amount: amt, note:'Ekstra indskud', date: new Date().toISOString()});
+  inp.value='';
+  save(); render();
+});
+
+document.getElementById('jar-from-budget-btn').addEventListener('click', ()=>{
+  const catSel = document.getElementById('jar-from-budget-cat');
+  const amtInp = document.getElementById('jar-from-budget-amount');
+  const dest = document.getElementById('jar-from-budget-dest').value;
+  const catId = catSel.value;
+  const amt = parseFloat(amtInp.value);
+  if(!catId || !amt || amt<=0) return;
+  const noteTxt = dest==='invest' ? 'Investering' : 'Opsparing';
+  const logId = uid();
+  state.transactions.push({id: uid(), categoryId: catId, amount: amt, note: noteTxt, jarDest: dest, jarLogId: logId, date: new Date().toISOString()});
+  if(dest==='invest'){
+    state.invested = Math.round(((state.invested||0)+amt)*100)/100;
+  } else {
+    state.jarTotal = Math.round((state.jarTotal+amt)*100)/100;
+  }
+  state.jarLog.push({id: logId, type:'ind', amount: amt, note: dest==='invest' ? 'Fra budget til investering' : 'Fra budget til opsparing', date: new Date().toISOString()});
+  amtInp.value='';
+  save(); render();
+});
+
+document.getElementById('invest-btn').addEventListener('click', ()=>{
+  const inp = document.getElementById('invest-amount');
+  const amt = parseFloat(inp.value);
+  if(!amt || amt<=0) return;
+  if(amt > state.jarTotal){
+    showJarMsg('Der er kun ' + fmt(state.jarTotal) + ' i fri opsparing.');
+    return;
+  }
+  state.jarTotal = Math.round((state.jarTotal-amt)*100)/100;
+  state.invested = Math.round(((state.invested||0)+amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'flyt', amount: amt, note:'Flyttet til investering', date: new Date().toISOString()});
+  inp.value='';
+  save(); render();
+});
+
+document.getElementById('divest-btn').addEventListener('click', ()=>{
+  const inp = document.getElementById('invest-amount');
+  const amt = parseFloat(inp.value);
+  if(!amt || amt<=0) return;
+  if(amt > (state.invested||0)){
+    showJarMsg('Der er kun ' + fmt(state.invested||0) + ' investeret.');
+    return;
+  }
+  state.invested = Math.round((state.invested-amt)*100)/100;
+  state.jarTotal = Math.round((state.jarTotal+amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'flyt', amount: amt, note:'Flyttet tilbage til fri opsparing', date: new Date().toISOString()});
+  inp.value='';
+  save(); render();
+});
+
+document.getElementById('jar-withdraw-btn').addEventListener('click', ()=>{
+  const amtInp = document.getElementById('jar-withdraw-amount');
+  const noteInp = document.getElementById('jar-withdraw-note');
+  const amt = parseFloat(amtInp.value);
+  if(!amt || amt<=0) return;
+  if(amt > state.jarTotal){
+    showJarMsg('Der er kun ' + fmt(state.jarTotal) + ' i sparegrisen.');
+    return;
+  }
+  state.jarTotal = Math.round((state.jarTotal-amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'ud', amount: amt, note: noteInp.value.trim(), date: new Date().toISOString()});
+  amtInp.value=''; noteInp.value='';
+  save(); render();
+});
+
+function switchTab(tabName){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabName));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+tabName));
+}
+document.getElementById('income-form').addEventListener('submit', e=>{
+  e.preventDefault();
+  const amtInp = document.getElementById('income-amount');
+  const noteInp = document.getElementById('income-note');
+  const amt = parseFloat(amtInp.value);
+  if(!amt || amt<=0) return;
+  state.income.push({id: uid(), amount: amt, note: noteInp.value.trim(), date: new Date().toISOString()});
+  amtInp.value=''; noteInp.value='';
+  save(); render();
+});
+
+document.getElementById('income-transfer-btn').addEventListener('click', ()=>{
+  const total = state.income.reduce((s,i)=>s+i.amount,0);
+  if(total<=0) return;
+  state.jarTotal = Math.round((state.jarTotal+total)*100)/100;
+  state.jarLog.push({id: uid(), type:'ind', amount: total, note:'Overført fra indtægter', date: new Date().toISOString()});
+  state.income = [];
+  save(); render();
+});
+
+document.getElementById('export-btn').addEventListener('click', async ()=>{
+  const data = JSON.stringify(state);
+  const status = document.getElementById('backup-status');
+  try{
+    await navigator.clipboard.writeText(data);
+    status.textContent = 'Dine data er kopieret. Indsæt dem et sikkert sted, fx i Noter.';
+  }catch(e){
+    document.getElementById('import-area').value = data;
+    status.textContent = 'Kunne ikke kopiere automatisk — dataene står nu i feltet herover, så du kan markere og kopiere dem selv.';
+  }
+});
+
+document.getElementById('import-btn').addEventListener('click', ()=>{
+  const status = document.getElementById('backup-status');
+  const raw = document.getElementById('import-area').value.trim();
+  if(!raw){ status.textContent = 'Indsæt først en sikkerhedskopi i feltet.'; return; }
+  try{
+    const parsed = JSON.parse(raw);
+    if(!parsed || !Array.isArray(parsed.categories)) throw new Error('ugyldig');
+    if(!confirmImport){
+      confirmImport = true;
+      document.getElementById('import-btn').textContent = 'Tryk igen for at overskrive appens data';
+      status.textContent = 'Dette overskriver de data, der er i appen nu. Tryk på knappen igen for at bekræfte.';
+      setTimeout(()=>{ confirmImport=false; document.getElementById('import-btn').textContent='Indlæs data'; }, 6000);
+      return;
+    }
+    confirmImport = false;
+    document.getElementById('import-btn').textContent = 'Indlæs data';
+    state = parsed;
+    if(!state.history) state.history = [];
+    if(!state.income) state.income = [];
+    if(!state.monthKey) state.monthKey = monthKeyOf(new Date());
+    document.getElementById('import-area').value = '';
+    save(); render();
+    status.textContent = 'Dine data er indlæst.';
+  }catch(e){
+    status.textContent = 'Det lignede ikke en gyldig sikkerhedskopi — tjek at hele teksten kom med.';
+  }
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchTab(btn.dataset.tab));
+});
+document.getElementById('jar-mini-badge').addEventListener('click', ()=> switchTab('jar'));
+
+load();
+
+try{
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      try{ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }catch(e){}
+    });
+  }
+}catch(e){}
+</script>
+</body>
+</html>
