@@ -66,7 +66,7 @@
   .cat-list-head{display:flex;font-size:12px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;font-weight:500;padding:4px 0;border-bottom:1px solid var(--line);margin-bottom:4px;}
   .cat-list-head span{flex:1;text-align:right;}
   .cat-row{padding:18px 14px;margin-bottom:6px;border-bottom:1px solid var(--line);border-radius:16px;transition:background 0.2s ease;}
-  .cat-row:hover{background:#F0E9D9;}
+  @media(hover:hover){ .cat-row:hover{background:#F0E9D9;} }
   .cat-row .cat-stats{display:flex;align-items:center;gap:12px;margin-top:0;}
   .cat-row .cat-stats .stat{flex:1;text-align:right;font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;font-size:13.5px;}
   .cat-row .cat-stats .stat.alloc-cell{text-align:right;}
@@ -111,6 +111,10 @@
   .jar-goal{font-size:12px;color:var(--gold-deep);margin-top:10px;text-align:center;font-weight:500;}
 
   form.expense-form{display:flex;flex-direction:column;gap:10px;}
+  .quick-chip{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--ink);background:rgba(142,111,174,0.10);border:1px solid rgba(142,111,174,0.25);border-radius:999px;padding:7px 13px;cursor:pointer;transition:background 0.2s ease, transform 0.15s ease;}
+  .quick-chip:hover{background:rgba(142,111,174,0.18);}
+  .quick-chip:active{transform:scale(0.96);}
+  .quick-chip .chip-amt{color:var(--gold-deep);font-variant-numeric:tabular-nums;}
   .field{display:flex;flex-direction:column;gap:4px;}
   .field label{font-size:12.5px;color:var(--ink-soft);text-transform:none;letter-spacing:0.01em;font-weight:500;}
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -118,7 +122,7 @@
 
   .tx-list{max-height:340px;overflow-y:auto;}
   .tx-row{display:flex;justify-content:space-between;align-items:center;padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px;border-radius:14px;transition:background 0.2s ease;}
-  .tx-row:hover{background:#F3EEDF;}
+  @media(hover:hover){ .tx-row:hover{background:#F3EEDF;} }
   .tx-row:last-child{border-bottom:none;}
   .tx-meta{display:flex;flex-direction:column;}
   .tx-cat{font-size:11px;color:var(--ink-soft);}
@@ -194,6 +198,7 @@
             <div class="num" id="spent-total" style="font-size:18px;color:var(--coral)">0 kr.</div>
           </div>
         </div>
+        <p class="desc" id="carryover-note" style="display:none;margin-top:-6px;color:var(--gold-deep);"></p>
 
         <div class="cat-list-head">
           <span style="flex:1;text-align:right">Fordelt</span><span style="flex:1;text-align:right">Brugt</span><span style="flex:1;text-align:right">Tilbage</span><span style="flex:none;width:30px"></span>
@@ -213,6 +218,10 @@
         <h2>Registrer udgift</h2>
         <p class="desc">Beløbet trækkes fra kategoriens fordelte budget med det eksakte beløb.</p>
         <form class="expense-form" id="expense-form">
+          <div id="quick-picks" style="display:none;">
+            <div class="label" style="font-size:12px;color:var(--ink-soft);font-weight:500;margin-bottom:6px;">Hurtig-valg fra tidligere</div>
+            <div id="quick-picks-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;"></div>
+          </div>
           <div class="two-col">
             <div class="field">
               <label>Kategori</label>
@@ -252,6 +261,7 @@
               <clipPath id="jarClip"><path d="M20 30 Q20 12 60 12 Q100 12 100 30 L100 118 Q100 132 84 132 L36 132 Q20 132 20 118 Z"/></clipPath>
             </defs>
             <path d="M20 30 Q20 12 60 12 Q100 12 100 30 L100 118 Q100 132 84 132 L36 132 Q20 132 20 118 Z" fill="none" stroke="#3E3B2E" stroke-width="3" stroke-linejoin="round"/>
+            <rect id="jar-fill-invested" x="20" width="80" height="0" y="132" fill="#7C9468" clip-path="url(#jarClip)"/>
             <rect id="jar-fill" x="20" width="80" height="0" y="132" fill="#8E6FAE" clip-path="url(#jarClip)"/>
             <line x1="20" y1="48" x2="100" y2="48" stroke="#3E3B2E" stroke-width="1" stroke-dasharray="3 4" opacity="0.35"/>
             <line x1="20" y1="80" x2="100" y2="80" stroke="#3E3B2E" stroke-width="1" stroke-dasharray="3 4" opacity="0.35"/>
@@ -260,6 +270,10 @@
           </svg>
           <div class="jar-amount" id="jar-amount">0 kr.</div>
           <div class="jar-label">opsparet i alt</div>
+          <div id="jar-breakdown" style="display:none;font-size:12px;color:var(--ink-soft);margin-top:6px;">
+            <span style="color:var(--gold-deep);font-weight:600;">●</span> <span id="jar-free-txt"></span>
+            &nbsp;&nbsp;<span style="color:var(--moss);font-weight:600;">●</span> <span id="jar-invested-txt"></span>
+          </div>
           <div class="jar-goal" id="jar-goal-text"></div>
         </div>
         <div class="settings-row" style="margin-top:16px">
@@ -271,12 +285,68 @@
           <label>Sparemål (valgfrit)</label>
           <input type="number" id="savings-goal" step="50" min="0" placeholder="fx 500">
         </div>
-        <button class="btn ghost small" id="manual-deposit-btn" style="width:100%">+ Læg ekstra i sparegrisen</button>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Læg ekstra i sparegrisen (kr.)</label>
+          <input type="number" id="manual-deposit-amount" step="1" min="0" placeholder="0">
+        </div>
+        <button class="btn ghost small" id="manual-deposit-btn" style="width:100%">+ Læg i sparegrisen</button>
+        <p class="desc" id="jar-status" style="display:none;margin:10px 0 0;color:var(--coral);"></p>
+
+        <div style="margin-top:20px;padding-top:18px;border-top:1px dashed var(--line);">
+          <div class="label" style="font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-bottom:8px;">Flyt fra budget til sparegris</div>
+          <p class="desc" style="margin-bottom:10px;">Registreres som en udgift i kategorien og lægges samtidig i sparegrisen — så tallene hænger sammen.</p>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Kategori i budgettet</label>
+            <select id="jar-from-budget-cat"></select>
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Til</label>
+            <select id="jar-from-budget-dest">
+              <option value="fri">Opsparing (fri)</option>
+              <option value="invest">Investering</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Beløb (kr.)</label>
+            <input type="number" id="jar-from-budget-amount" step="1" min="0" placeholder="0">
+          </div>
+          <button class="btn ghost small" id="jar-from-budget-btn" style="width:100%;">Flyt til sparegris</button>
+        </div>
+
+        <div style="margin-top:20px;padding-top:18px;border-top:1px dashed var(--line);">
+          <div class="label" style="font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-bottom:8px;">Investering</div>
+          <p class="desc" style="margin-bottom:10px;">Marker en del af opsparingen som investeret — den vises grønt i bunden af glasset og tæller stadig med i din samlede opsparing.</p>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Beløb (kr.)</label>
+            <input type="number" id="invest-amount" step="1" min="0" placeholder="0">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn ghost small" id="invest-btn" style="width:100%;color:var(--moss);">→ Til investering</button>
+            <button class="btn ghost small" id="divest-btn" style="width:100%;">← Tilbage til fri opsparing</button>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:18px;border-top:1px dashed var(--line);">
+          <div class="field" style="margin-bottom:10px;">
+            <label>Tag ud af sparegrisen (kr.)</label>
+            <input type="number" id="jar-withdraw-amount" step="1" min="0" placeholder="0">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Til hvad?</label>
+            <input type="text" id="jar-withdraw-note" placeholder="Fx ny cykellygte">
+          </div>
+          <button class="btn ghost small" id="jar-withdraw-btn" style="width:100%;color:var(--coral);">− Tag ud af sparegrisen</button>
+        </div>
+
+        <div style="margin-top:20px;">
+          <div class="label" style="font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-bottom:4px;">Bevægelser</div>
+          <div class="tx-list" id="jar-log-list"></div>
+        </div>
       </div>
 
       <div class="card tint-moss">
         <h2>Indtægter</h2>
-        <p class="desc">Salg af tøj eller ting, du ikke længere skal bruge. Beløbet samles her, og du kan overføre det til sparegrisen, når det passer dig.</p>
+        <p class="desc">Salg af tøj eller ting, du ikke længere skal bruge. Beløbet samles her, og du kan overføre det til sparegrisen, når det passer dig. Klik på en indtægt i listen for at rette eller slette den.</p>
         <form id="income-form" class="expense-form">
           <div class="field">
             <label>Beløb (kr.)</label>
@@ -328,6 +398,9 @@ const MONTHS = ["januar","februar","marts","april","maj","juni","juli","august",
 const fmt = n => (Math.round(n*100)/100).toLocaleString('da-DK',{minimumFractionDigits:0,maximumFractionDigits:2}) + " kr.";
 const KEY = 'lommeregnskab-state';
 
+let confirmDeleteCatId = null;
+let confirmImport = false;
+
 let state = {
   monthlyBudget: 2000,
   monthLabel: '',
@@ -337,7 +410,10 @@ let state = {
   jarTotal: 0,
   savingsGoal: null,
   history: [],
-  income: []
+  income: [],
+  jarLog: [],
+  savedEntries: [],
+  invested: 0
 };
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
@@ -359,7 +435,10 @@ function defaultState(){
     jarTotal: 0,
     savingsGoal: null,
     history: [],
-    income: []
+    income: [],
+    jarLog: [],
+    savedEntries: [],
+    invested: 0
   };
 }
 
@@ -372,6 +451,10 @@ async function load(){
   }
   if(!state.history) state.history = [];
   if(!state.income) state.income = [];
+  if(!state.jarLog) state.jarLog = [];
+  if(!state.savedEntries) state.savedEntries = [];
+  if(state.carryover === undefined) state.carryover = 0;
+  if(state.invested === undefined) state.invested = 0;
   if(!state.monthKey) state.monthKey = monthKeyOf(new Date());
   checkAutoRollover();
   render();
@@ -387,12 +470,20 @@ function archiveCurrentMonth(){
     totalSpent,
     txCount: state.transactions.length
   });
-  // Overfør det, der er tilbage i hver kategori, til næste måned
+}
+
+function rolloverCategories(){
+  // Overfør det, der er tilbage i hver kategori, til næste måned,
+  // og husk det samlede overførte beløb separat, så det nye månedsbudget ikke "spises".
+  let totalCarry = 0;
   state.categories.forEach(c=>{
     const spent = spentByCategory(c.id);
     const leftover = Math.round((c.allocated - spent)*100)/100;
     c.allocated = leftover;
+    c.carried = leftover;
+    totalCarry += leftover;
   });
+  state.carryover = Math.round(totalCarry*100)/100;
 }
 
 function checkAutoRollover(){
@@ -402,6 +493,7 @@ function checkAutoRollover(){
     if(state.transactions.length > 0 || state.categories.some(c=>spentByCategory(c.id)>0)){
       archiveCurrentMonth();
     }
+    rolloverCategories();
     state.transactions = [];
     state.monthLabel = MONTHS[now.getMonth()] + " " + now.getFullYear();
     state.monthKey = currentKey;
@@ -428,10 +520,18 @@ function render(){
   document.getElementById('jar-set-amount').value = state.jarTotal || '';
 
   const allocatedTotal = state.categories.reduce((s,c)=>s+c.allocated,0);
-  const unallocated = state.monthlyBudget - allocatedTotal;
+  const carry = state.carryover || 0;
+  const unallocated = Math.round((state.monthlyBudget + carry - allocatedTotal)*100)/100;
   const unallocEl = document.getElementById('unallocated');
   unallocEl.textContent = fmt(unallocated);
   unallocEl.className = 'num ' + (unallocated===0 ? 'ok' : unallocated>0 ? 'under' : 'over');
+  const carryEl = document.getElementById('carryover-note');
+  if(carry !== 0){
+    carryEl.style.display = 'block';
+    carryEl.textContent = `Til rådighed i alt: ${fmt(state.monthlyBudget + carry)} — heraf ${fmt(carry)} overført fra sidste måned.`;
+  } else {
+    carryEl.style.display = 'none';
+  }
 
   const spentTotal = state.transactions.reduce((s,t)=>s+t.amount,0);
   document.getElementById('spent-total').textContent = fmt(spentTotal);
@@ -450,7 +550,7 @@ function render(){
       <div class="cat-name-row">
         <span class="cat-dot" style="background:${dotColor}"></span>
         <input type="text" data-id-name="${c.id}" class="cat-name-input" value="${c.name}">
-        <button class="x-btn" data-del="${c.id}" aria-label="Fjern kategori">×</button>
+        <button class="x-btn" data-del="${c.id}" aria-label="Fjern kategori" style="${confirmDeleteCatId===c.id ? 'background:var(--coral);color:#fff;font-size:12px;font-weight:600;padding:6px 12px;' : ''}">${confirmDeleteCatId===c.id ? 'Slet?' : '×'}</button>
       </div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${over?'#B5603F':dotColor}"></div></div>
       <div class="cat-stats">
@@ -458,6 +558,7 @@ function render(){
         <div class="stat"><span class="stat-label">Brugt</span>${fmt(spent)}</div>
         <div class="stat" style="color:${over?'#B5603F':'inherit'}"><span class="stat-label">Tilbage</span>${fmt(remaining)}</div>
       </div>
+      ${c.carried ? `<div style="font-size:11px;color:var(--gold-deep);margin-top:8px;">heraf ${fmt(c.carried)} overført fra sidste måned</div>` : ''}
     `;
     tbody.appendChild(row);
   });
@@ -479,8 +580,16 @@ function render(){
   });
   tbody.querySelectorAll('[data-del]').forEach(btn=>{
     btn.addEventListener('click', e=>{
-      state.categories = state.categories.filter(c=>c.id!==e.target.dataset.del);
-      save(); render();
+      const id = btn.dataset.del;
+      if(confirmDeleteCatId === id){
+        confirmDeleteCatId = null;
+        state.categories = state.categories.filter(c=>c.id!==id);
+        save(); render();
+      } else {
+        confirmDeleteCatId = id;
+        render();
+        setTimeout(()=>{ if(confirmDeleteCatId===id){ confirmDeleteCatId=null; render(); } }, 4000);
+      }
     });
   });
 
@@ -489,19 +598,41 @@ function render(){
   sel.innerHTML = state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   if(state.categories.some(c=>c.id===prevVal)) sel.value = prevVal;
 
-  document.getElementById('jar-amount').textContent = fmt(state.jarTotal);
-  document.getElementById('jar-mini-amount').textContent = fmt(state.jarTotal);
-  const maxH = 100;
-  let fillH = 0;
-  if(state.savingsGoal && state.savingsGoal>0){
-    fillH = Math.min(1, state.jarTotal/state.savingsGoal) * maxH;
-    document.getElementById('jar-goal-text').textContent = `${fmt(state.jarTotal)} af mål ${fmt(state.savingsGoal)}`;
+  const jarSel = document.getElementById('jar-from-budget-cat');
+  const jarPrev = jarSel.value;
+  jarSel.innerHTML = state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(state.categories.some(c=>c.id===jarPrev)) jarSel.value = jarPrev;
+
+  const invested = state.invested || 0;
+  const combined = Math.round((state.jarTotal + invested)*100)/100;
+  document.getElementById('jar-amount').textContent = fmt(combined);
+  document.getElementById('jar-mini-amount').textContent = fmt(combined);
+
+  const breakdown = document.getElementById('jar-breakdown');
+  if(invested > 0){
+    breakdown.style.display='block';
+    document.getElementById('jar-free-txt').textContent = fmt(state.jarTotal) + ' fri';
+    document.getElementById('jar-invested-txt').textContent = fmt(invested) + ' investeret';
   } else {
-    fillH = Math.min(1, state.jarTotal/2000) * maxH;
+    breakdown.style.display='none';
+  }
+
+  const maxH = 100;
+  const scaleBase = (state.savingsGoal && state.savingsGoal>0) ? state.savingsGoal : 2000;
+  const totalH = Math.min(1, combined/scaleBase) * maxH;
+  const investedH = combined>0 ? totalH * (invested/combined) : 0;
+  const freeH = totalH - investedH;
+  if(state.savingsGoal && state.savingsGoal>0){
+    document.getElementById('jar-goal-text').textContent = `${fmt(combined)} af mål ${fmt(state.savingsGoal)}`;
+  } else {
     document.getElementById('jar-goal-text').textContent = '';
   }
-  document.getElementById('jar-fill').setAttribute('height', fillH);
-  document.getElementById('jar-fill').setAttribute('y', 132-fillH);
+  const invRect = document.getElementById('jar-fill-invested');
+  invRect.setAttribute('height', investedH);
+  invRect.setAttribute('y', 132-investedH);
+  const freeRect = document.getElementById('jar-fill');
+  freeRect.setAttribute('height', freeH);
+  freeRect.setAttribute('y', 132-investedH-freeH);
 
   const txList = document.getElementById('tx-list');
   if(state.transactions.length===0){
@@ -557,6 +688,16 @@ function render(){
         const noteInp = txList.querySelector(`.tx-edit-note[data-edit-id="${id}"]`);
         const amt = parseFloat(amtInp.value);
         if(amt && amt>0){
+          if(t.jarDest){
+            const diff = Math.round((amt - t.amount)*100)/100;
+            if(t.jarDest==='invest'){
+              state.invested = Math.max(0, Math.round(((state.invested||0)+diff)*100)/100);
+            } else {
+              state.jarTotal = Math.max(0, Math.round((state.jarTotal+diff)*100)/100);
+            }
+            const logEntry = state.jarLog.find(l=>l.id===t.jarLogId);
+            if(logEntry) logEntry.amount = amt;
+          }
           t.amount = amt;
           t.categoryId = catInp.value;
           t.note = noteInp.value.trim();
@@ -574,6 +715,15 @@ function render(){
     txList.querySelectorAll('[data-delete-tx]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const id = btn.dataset.deleteTx;
+        const t = state.transactions.find(x=>x.id===id);
+        if(t && t.jarDest){
+          if(t.jarDest==='invest'){
+            state.invested = Math.max(0, Math.round(((state.invested||0)-t.amount)*100)/100);
+          } else {
+            state.jarTotal = Math.max(0, Math.round((state.jarTotal-t.amount)*100)/100);
+          }
+          state.jarLog = state.jarLog.filter(l=>l.id!==t.jarLogId);
+        }
         state.transactions = state.transactions.filter(x=>x.id!==id);
         state.editingTxId = null;
         save(); render();
@@ -582,7 +732,57 @@ function render(){
   }
 
   renderIncome();
+  renderJarLog();
+  renderQuickPicks();
   renderHistory();
+}
+
+function renderQuickPicks(){
+  const wrap = document.getElementById('quick-picks');
+  const chips = document.getElementById('quick-picks-chips');
+  if(!state.savedEntries || state.savedEntries.length===0){
+    wrap.style.display='none';
+    return;
+  }
+  const top = [...state.savedEntries]
+    .sort((a,b)=>(b.count-a.count) || (new Date(b.lastUsed)-new Date(a.lastUsed)))
+    .slice(0,6);
+  wrap.style.display='block';
+  chips.innerHTML = top.map((s,idx)=>
+    `<button type="button" class="quick-chip" data-pick="${idx}">${s.note} <span class="chip-amt">${fmt(s.amount)}</span></button>`
+  ).join('');
+  chips.querySelectorAll('[data-pick]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s = top[parseInt(btn.dataset.pick)];
+      document.getElementById('exp-amount').value = s.amount;
+      document.getElementById('exp-note').value = s.note;
+      const sel = document.getElementById('exp-category');
+      if(state.categories.some(c=>c.id===s.categoryId)) sel.value = s.categoryId;
+    });
+  });
+}
+
+function renderJarLog(){
+  const list = document.getElementById('jar-log-list');
+  if(!state.jarLog || state.jarLog.length===0){
+    list.innerHTML = '<div class="empty-state">Ingen bevægelser endnu. Indskud, overførsler og udtag vises her.</div>';
+    return;
+  }
+  list.innerHTML = [...state.jarLog].reverse().slice(0,25).map(e=>{
+    const isOut = e.type==='ud';
+    const isMove = e.type==='flyt';
+    const d = new Date(e.date);
+    const dateStr = d.toLocaleDateString('da-DK', {day:'numeric', month:'short'});
+    const color = isMove ? 'var(--gold-deep)' : (isOut ? 'var(--coral)' : 'var(--moss)');
+    const sign = isMove ? '⇄ ' : (isOut ? '−' : '+');
+    return `<div class="tx-row">
+      <div class="tx-meta">
+        <span>${e.note || (isOut ? 'Udtag' : 'Indskud')}</span>
+        <span class="tx-cat">${dateStr}</span>
+      </div>
+      <span class="tx-amt" style="color:${color}">${sign}${fmt(e.amount)}</span>
+    </div>`;
+  }).join('');
 }
 
 function renderIncome(){
@@ -592,13 +792,66 @@ function renderIncome(){
   if(state.income.length===0){
     list.innerHTML = '<div class="empty-state">Ingen indtægter endnu. Solgt noget tøj eller ting? Tilføj det herover.</div>';
   } else {
-    list.innerHTML = [...state.income].reverse().map(i=>`
-      <div class="tx-row">
+    list.innerHTML = [...state.income].reverse().map(i=>{
+      if(state.editingIncomeId === i.id){
+        return `<div class="tx-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <div class="field">
+            <label>Beløb (kr.)</label>
+            <input type="number" class="inc-edit-amount" data-edit-id="${i.id}" value="${i.amount}" step="1" min="0">
+          </div>
+          <div class="field">
+            <label>Note</label>
+            <input type="text" class="inc-edit-note" data-edit-id="${i.id}" value="${i.note || ''}">
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn small" data-save-inc="${i.id}" style="flex:1;">Gem</button>
+            <button class="btn ghost small" data-cancel-inc="${i.id}">Annullér</button>
+            <button class="x-btn" data-delete-inc="${i.id}" aria-label="Slet indtægt" style="color:var(--coral);">×</button>
+          </div>
+        </div>`;
+      }
+      return `<div class="tx-row" data-inc-edit-trigger="${i.id}" style="cursor:pointer;">
         <div class="tx-meta">
           <span>${i.note || 'Indtægt'}</span>
         </div>
         <span class="tx-amt" style="color:var(--moss)">+${fmt(i.amount)}</span>
-      </div>`).join('');
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-inc-edit-trigger]').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        state.editingIncomeId = row.dataset.incEditTrigger;
+        render();
+      });
+    });
+    list.querySelectorAll('[data-save-inc]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.saveInc;
+        const item = state.income.find(x=>x.id===id);
+        const amt = parseFloat(list.querySelector(`.inc-edit-amount[data-edit-id="${id}"]`).value);
+        const note = list.querySelector(`.inc-edit-note[data-edit-id="${id}"]`).value.trim();
+        if(amt && amt>0){
+          item.amount = amt;
+          item.note = note;
+        }
+        state.editingIncomeId = null;
+        save(); render();
+      });
+    });
+    list.querySelectorAll('[data-cancel-inc]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.editingIncomeId = null;
+        render();
+      });
+    });
+    list.querySelectorAll('[data-delete-inc]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.deleteInc;
+        state.income = state.income.filter(x=>x.id!==id);
+        state.editingIncomeId = null;
+        save(); render();
+      });
+    });
   }
 }
 
@@ -694,14 +947,108 @@ document.getElementById('expense-form').addEventListener('submit', e=>{
   const note = document.getElementById('exp-note').value.trim();
   if(!catId || !amt || amt<=0) return;
   state.transactions.push({id: uid(), categoryId: catId, amount: amt, note, date: new Date().toISOString()});
+  rememberEntry(note, amt, catId);
   expAmountInp.value=''; document.getElementById('exp-note').value='';
   save(); render();
 });
 
+function rememberEntry(note, amount, categoryId){
+  if(!note) return;
+  const key = note.toLowerCase();
+  const existing = state.savedEntries.find(s=>s.note.toLowerCase()===key);
+  if(existing){
+    existing.amount = amount;
+    existing.categoryId = categoryId;
+    existing.count = (existing.count||1)+1;
+    existing.lastUsed = new Date().toISOString();
+  } else {
+    state.savedEntries.push({note, amount, categoryId, count:1, lastUsed:new Date().toISOString()});
+  }
+  if(state.savedEntries.length>30){
+    state.savedEntries.sort((a,b)=>(b.count-a.count) || (new Date(b.lastUsed)-new Date(a.lastUsed)));
+    state.savedEntries = state.savedEntries.slice(0,30);
+  }
+}
+
+function showJarMsg(txt){
+  const el = document.getElementById('jar-status');
+  el.textContent = txt;
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 4000);
+}
+
 document.getElementById('manual-deposit-btn').addEventListener('click', ()=>{
-  const amt = parseFloat(prompt('Hvor mange kr. vil du lægge i sparegrisen?', '50'));
+  const inp = document.getElementById('manual-deposit-amount');
+  const amt = parseFloat(inp.value);
   if(!amt || amt<=0) return;
   state.jarTotal = Math.round((state.jarTotal+amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'ind', amount: amt, note:'Ekstra indskud', date: new Date().toISOString()});
+  inp.value='';
+  save(); render();
+});
+
+document.getElementById('jar-from-budget-btn').addEventListener('click', ()=>{
+  const catSel = document.getElementById('jar-from-budget-cat');
+  const amtInp = document.getElementById('jar-from-budget-amount');
+  const dest = document.getElementById('jar-from-budget-dest').value;
+  const catId = catSel.value;
+  const amt = parseFloat(amtInp.value);
+  if(!catId || !amt || amt<=0) return;
+  const noteTxt = dest==='invest' ? 'Investering' : 'Opsparing';
+  const logId = uid();
+  state.transactions.push({id: uid(), categoryId: catId, amount: amt, note: noteTxt, jarDest: dest, jarLogId: logId, date: new Date().toISOString()});
+  if(dest==='invest'){
+    state.invested = Math.round(((state.invested||0)+amt)*100)/100;
+  } else {
+    state.jarTotal = Math.round((state.jarTotal+amt)*100)/100;
+  }
+  state.jarLog.push({id: logId, type:'ind', amount: amt, note: dest==='invest' ? 'Fra budget til investering' : 'Fra budget til opsparing', date: new Date().toISOString()});
+  amtInp.value='';
+  save(); render();
+});
+
+document.getElementById('invest-btn').addEventListener('click', ()=>{
+  const inp = document.getElementById('invest-amount');
+  const amt = parseFloat(inp.value);
+  if(!amt || amt<=0) return;
+  if(amt > state.jarTotal){
+    showJarMsg('Der er kun ' + fmt(state.jarTotal) + ' i fri opsparing.');
+    return;
+  }
+  state.jarTotal = Math.round((state.jarTotal-amt)*100)/100;
+  state.invested = Math.round(((state.invested||0)+amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'flyt', amount: amt, note:'Flyttet til investering', date: new Date().toISOString()});
+  inp.value='';
+  save(); render();
+});
+
+document.getElementById('divest-btn').addEventListener('click', ()=>{
+  const inp = document.getElementById('invest-amount');
+  const amt = parseFloat(inp.value);
+  if(!amt || amt<=0) return;
+  if(amt > (state.invested||0)){
+    showJarMsg('Der er kun ' + fmt(state.invested||0) + ' investeret.');
+    return;
+  }
+  state.invested = Math.round((state.invested-amt)*100)/100;
+  state.jarTotal = Math.round((state.jarTotal+amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'flyt', amount: amt, note:'Flyttet tilbage til fri opsparing', date: new Date().toISOString()});
+  inp.value='';
+  save(); render();
+});
+
+document.getElementById('jar-withdraw-btn').addEventListener('click', ()=>{
+  const amtInp = document.getElementById('jar-withdraw-amount');
+  const noteInp = document.getElementById('jar-withdraw-note');
+  const amt = parseFloat(amtInp.value);
+  if(!amt || amt<=0) return;
+  if(amt > state.jarTotal){
+    showJarMsg('Der er kun ' + fmt(state.jarTotal) + ' i sparegrisen.');
+    return;
+  }
+  state.jarTotal = Math.round((state.jarTotal-amt)*100)/100;
+  state.jarLog.push({id: uid(), type:'ud', amount: amt, note: noteInp.value.trim(), date: new Date().toISOString()});
+  amtInp.value=''; noteInp.value='';
   save(); render();
 });
 
@@ -724,6 +1071,7 @@ document.getElementById('income-transfer-btn').addEventListener('click', ()=>{
   const total = state.income.reduce((s,i)=>s+i.amount,0);
   if(total<=0) return;
   state.jarTotal = Math.round((state.jarTotal+total)*100)/100;
+  state.jarLog.push({id: uid(), type:'ind', amount: total, note:'Overført fra indtægter', date: new Date().toISOString()});
   state.income = [];
   save(); render();
 });
@@ -747,7 +1095,15 @@ document.getElementById('import-btn').addEventListener('click', ()=>{
   try{
     const parsed = JSON.parse(raw);
     if(!parsed || !Array.isArray(parsed.categories)) throw new Error('ugyldig');
-    if(!confirm('Indlæs sikkerhedskopien? Det overskriver de data, der er i appen nu.')) return;
+    if(!confirmImport){
+      confirmImport = true;
+      document.getElementById('import-btn').textContent = 'Tryk igen for at overskrive appens data';
+      status.textContent = 'Dette overskriver de data, der er i appen nu. Tryk på knappen igen for at bekræfte.';
+      setTimeout(()=>{ confirmImport=false; document.getElementById('import-btn').textContent='Indlæs data'; }, 6000);
+      return;
+    }
+    confirmImport = false;
+    document.getElementById('import-btn').textContent = 'Indlæs data';
     state = parsed;
     if(!state.history) state.history = [];
     if(!state.income) state.income = [];
@@ -767,11 +1123,13 @@ document.getElementById('jar-mini-badge').addEventListener('click', ()=> switchT
 
 load();
 
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-  });
-}
+try{
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      try{ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }catch(e){}
+    });
+  }
+}catch(e){}
 </script>
 </body>
 </html>
